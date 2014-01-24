@@ -1,0 +1,85 @@
+interface JavaScript {
+    JSONObject newJSONObject(String data);
+    JSONArray newJSONArray(Object data);
+}
+
+JavaScript js;
+
+void bindJavascript(JavaScript obj) {
+    js = obj;
+    IMAGE_PATH = "/images/";
+    TEXT_YOFFSET = 4;
+}
+
+class JSONObject {
+  Object _obj;
+  
+  JSONObject(Object data) {
+    _obj = js.newJSONObject(data);
+  }
+  
+  JSONArray getJSONArray(String key) {
+    return new JSONArray(_obj._getJSONArray(key));
+  }
+  
+  JSONObject getJSONObject(String key) {
+    return new JSONObject(_obj._getJSONObject(key));
+  }
+  
+  int getBoolean(int key) {
+    return _obj._getBoolean(key);
+  }
+  
+  int getInt(String key) {
+    return _obj._getInt(key);
+  }
+  
+  int getInt(String key, int defval) {
+    return _obj._getIntDef(key, defval);
+  }
+  
+  String getString(String key) {
+    return _obj._getString(key);
+  }
+  
+  boolean hasKey(String key) {
+    return _obj._hasKey(key);
+  }
+  
+  static JSONObject parse(String data) {
+    return new JSONObject(data);
+  }
+  
+}
+
+class JSONArray {
+  Object _obj;
+
+  JSONArray(Object data) {
+    _obj = js.newJSONArray(data);
+  }
+    
+  JSONArray getJSONArray(int key) {
+    return new JSONArray(_obj._getJSONArray(key));
+  }
+  
+  JSONObject getJSONObject(int key) {
+    return new JSONObject(_obj._getJSONObject(key));
+  }
+  
+  int getBoolean(int key) {
+    return _obj._getBoolean(key);
+  }
+  
+  int getInt(int key) {
+    return _obj._getInt(key);
+  }
+  
+  String getString(int key) {
+    return _obj._getString(key);
+  }
+  
+  int size() {
+    return _obj.length;
+  }
+}

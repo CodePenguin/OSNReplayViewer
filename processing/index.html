@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Outwitters Sports Network: Replay Viewer</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="css/viewer.css" type="text/css" />
+    <script type="text/javascript" src="js/jquery-1.7.2.min.js"></script>
+    <script type="text/javascript" src="js/jquery.blockUI.js"></script>
+    <script type="text/javascript" src="js/processing-1.4.1.min.js"></script>
+    <script type="text/javascript" src="js/jquery.hotkeys.js"></script>
+
+    <script type="text/javascript">
+        var bound = false;
+        var replayID;
+        var pjs;
+        var controller;
+        var renderer;
+        var timer_id = -1;
+        var timer_duration = 3000;
+        
+        $(document).ready(function() {
+          $.blockUI({ message: '<h2>Loading replay data...</h2>' });
+          replayID = getParameterByName("id");
+          setTimeout(bindJavascript, 500);
+          
+          $('#cmbRuntime').change(function() {
+          	controller.runtimeVersion = $(this).val();
+          });
+          $('#cmbDuration').change(function() {
+          	timer_duration = $(this).val();
+          });
+        });
+        
+        function getParameterByName(name) {
+            var match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+            return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+        }
+        
+        function bindJavascript() {
+            pjs = Processing.getInstanceById("mysketch");
+            if(pjs!=null && pjs.bindJavascript!=null) {
+              pjs.bindJavascript(this);
+              bound = true; 
+              pjs.smooth();
+              controller = new pjs.ReplayController();
+              controller.loadReplay("data/replays/viewreplay_" + replayID + ".json");
+              
+              var players = controller._players.toArray();
+              var temp = "";
+              if (players.length == 2) {
+              	temp = players[0].name + " (" + pjs.getRaceName(players[0].raceID) + ") vs " + players[1].name + " (" + pjs.getRaceName(players[1].raceID) + ")";
+              } else {
+              	temp = "Team 1: " + players[0].name + " (" + pjs.getRaceName(players[0].raceID) + ") and " + players[2].name + " (" + pjs.getRaceName(players[2].raceID) + ")";
+              	temp += "<br/>Team 2: " + players[1].name + " (" + pjs.getRaceName(players[1].raceID) + ") and " + players[3].name + " (" + pjs.getRaceName(players[3].raceID) + ")";
+              }
+
+              $("#lblPlayers").html(temp);
+              
+              processStats();
+              
+              renderer = new pjs.HDReplayRenderer(controller);
+              controller._loadKeyFrame = controller.loadKeyFrame;
+              controller.loadKeyFrame = loadKeyFrameOverride;
+
+  			  $(document).bind('keyup', 'p', togglePlay);
+  			  $(document).bind('keyup', 'j', function(){controller.prevKeyFrame()});
+  			  $(document).bind('keyup', 'k', function(){controller.nextKeyFrame()});
+  			  $(document).bind('keyup', 'n', function(){controller.prevTurn()});
+  			  $(document).bind('keyup', 'm', function(){controller.nextTurn()});
+  			  
+              $.unblockUI();
+  			  
+  			  var startFrame = 0;
+  			  if (window.location.hash)
+  			  	startFrame = parseInt(window.location.hash.substring(1));
+  			  setTimeout(function() {controller.loadKeyFrame(startFrame);}, 100);
+            }
+            if(!bound) setTimeout(bindJavascript, 250);
+        }
+        
+        function timerFunc() {
+        	controller.nextKeyFrame();
+			timer_id = setTimeout(timerFunc, timer_duration);
+        }
+        
+        function togglePlay() {
+        	if (timer_id == -1) {
+        		timer_id = setTimeout(timerFunc, timer_duration);
+        		$("#btnPlay").text("Pause");
+        	} else {
+        		$("#btnPlay").text("Play");
+        		clearTimeout(timer_id);
+        		timer_id = -1;
+        	}
+        }
+        
+        function displayHeatMap() {
+          $.blockUI({ message: '<h2>Generating heat map...</h2>' });
+          setTimeout(function () {
+              var hm = new pjs.HeatMapRenderer(controller);
+              hm.render();
+              controller.delegate = renderer;
+              $.unblockUI();
+          }, 500);
+        }
+        
+        function loadKeyFrameOverride(id) {
+            controller._loadKeyFrame(id);
+            $("#lstTurns .frame.current").removeClass("current");
+            var lstTurns = $('#lstTurns');
+            var li = $("#liFrame" + id);
+            var turn = li.parent().prev("legend");
+            var lstTop = lstTurns.scrollTop() - lstTurns.position().top;
+            li.addClass("current");
+            if (lstTop + li.position().top <= lstTop || lstTop + li.position().top >= lstTop + lstTurns.height()) {
+                $('#lstTurns').scrollTop(lstTop + turn.position().top);
+            }
+        }
+        
+        function processStats() {
+            var stats  = new pjs.ReplayStats(controller);
+            stats.calculate();
+            var turnList = stats.turns.toArray();
+            var lstTurns = $("#lstTurns");
+            for (var i = 0; i < turnList.length; i++) {
+                var turn = turnList[i];
+                var frameList = turn.frames.toArray();
+                var turnLI = $("<fieldset class='turn player" + turn.playerID + "'><legend><a href='#' onclick='controller.loadTurn(" + turn.turnID + ")'>" + turn.description + "</a></legend></fieldset>");
+                var frameUL = $("<ul class='frames'></ul>");
+                turnLI.append(frameUL);
+                for (var j = 0; j < frameList.length; j++)
+                  frameUL.append("<li class='frame' id='liFrame" + frameList[j].frameID + "'><a href='#" + frameList[j].frameID + "' onclick='controller.loadKeyFrame(" + frameList[j].frameID + ")'>" + frameList[j].description + "</a></li>");
+                lstTurns.append(turnLI);
+            }
+        }
+                
+        function newJSONObject(data) {
+            var obj;
+            if (typeof data == "object")
+                obj = data
+            else
+                obj = jQuery.parseJSON(data);
+            obj._getBoolean = function(key) {return this[key]};
+            obj._getInt = function(key) {return this[key]};
+            obj._getIntDef = function(key, defval) {return (key in this ? this[key] : defval);};
+            obj._getString = function(key) {return this[key]};
+            obj._getJSONArray = function(key) {return this[key]};
+            obj._getJSONObject = function(key) {return this[key]};
+            obj._hasKey = function(key) {return key in this;};
+            return obj;
+        }
+        
+        function newJSONArray(data) {
+            var obj = data;
+            obj._getBoolean = function(key) {return this[key]};
+            obj._getInt = function(key) {return this[key]};
+            obj._getString = function(key) {return this[key]};
+            obj._getJSONArray = function(key) {return this[key]};
+            obj._getJSONObject = function(key) {return this[key]};
+            obj._length = function() {return this.length};
+            return obj;
+        }
+
+    </script>
+  <body>
+    <table class="layout">
+		<tr>
+			<td colspan="2" id="header">
+				<span id="lblPlayers">Loading...</span>
+			</td>
+		</tr>
+        <tr>
+            <td>
+                <div id="lstTurns"></div>
+                <select id="cmbRuntime">
+                	<option value="1600">Outwitters Version 1.6.2</option>
+                	<option value="1500">Outwitters Version 1.5 - 1.6</option>
+                	<option value="1200">Outwitters Version 1.2 - 1.4</option>
+                	<option value="1000">Outwitters Version 1.0 - 1.1</option>
+                </select>
+            </td>
+            <td>
+                <canvas id="mysketch" data-processing-sources="hdrender.pde jsonobject.override drawmap.pde heatmap.pde stats.pde" width="504" height="585" style="border: 1px solid black;"></canvas>
+                <br/>
+                <center>
+                    <select id="cmbDuration"><option value="1000">1s</option><option value="3000" selected="selected">3s</option><option value="5000">5s</option><option value="10000">10s</option></select>
+                    <button id="btnPlay" onclick="togglePlay(); return false;">Play</button>
+                    <button onclick="controller.prevTurn(); return false;">&lt; Turn</button>
+                    <button onclick="controller.prevKeyFrame(); return false;">&lt; Frame</button>
+                    <button onclick="controller.nextKeyFrame(); return false;">Frame &gt;</button>
+                    <button onclick="controller.nextTurn(); return false;">Turn &gt;</button>
+                    <button onclick="displayHeatMap(); return false;">Heat map</button>
+                </center>
+            </td>
+        </tr>
+    </table>
+  </body>
+</html>

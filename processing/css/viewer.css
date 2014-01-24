@@ -1,0 +1,27 @@
+table.layout {width:850px; margin-left:1em; border: 1px solid #000000}
+table.layout td {vertical-align: top}
+
+#header {background-color: #000000; color: #FFFFFF; font-size: 24.5px; padding: 10px; text-align:center}
+#header table{width:100%}
+#header .player1 a {color: #005599}
+#header .player2 a {color: #B90400}
+#header .player3 a {color: #3A6B00}
+#header .player4 a {color: #995500}
+
+#lstTurns {
+    width: 300px;
+    height: 585px;
+    overflow: scroll;
+    border: 1px solid #000000;
+}
+
+#lstTurns fieldset {border: none; padding: 0.5em inherit 0.5em inherit; margin-bottom: 0}
+#lstTurns legend {border: 1px solid #000000; width: 95%; padding-left: 0.5em; margin-bottom: 0; font-size: 16px;line-height: 21px}
+#lstTurns legend a, #lstTurns legend a:visited, #lstTurns legend a:active  {color: #FFFFFF; font-weight: bold; text-decoration: none}
+#lstTurns .frame a {margin-left: 0.5em; text-decoration:underline}
+#lstTurns .frame.current {background-color: #FFA500;width: 95%}
+#lstTurns .frame.current a {font-weight:bold; color: #FFFFFF}
+#lstTurns .player1 legend {background-color: #005599}
+#lstTurns .player2 legend {background-color: #B90400}
+#lstTurns .player3 legend {background-color: #3A6B00}
+#lstTurns .player4 legend {background-color: #995500}
